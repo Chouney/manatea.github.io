@@ -1,2 +1,2 @@
 # manatea.github.io
-Personal
+个人主页:<https://manatea.github.io/>
