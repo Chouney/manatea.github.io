@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="张琪祥的博客">
+    <meta name="keyword" content="private zone">
+    <link rel="shortcut icon" href="/img/favicon.ico">
+
+    <title>
+        
+        关于SpringMVC的工作流程问题 - Chris的博客 | ChrisZhang&#39;s Blog
+        
+    </title>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/aircloud.css">
+    <link rel="stylesheet" href="/css/gitment.css">
+    <!--<link rel="stylesheet" href="https://imsun.github.io/gitment/style/default.css">-->
+    <link href="//at.alicdn.com/t/font_620856_pl6z7sid89qkt9.css" rel="stylesheet" type="text/css">
+    <!-- ga & ba script hoook -->
+    <script></script>
+</head>
+
+<body>
+
+<div class="site-nav-toggle" id="site-nav-toggle">
+    <button>
+        <span class="btn-bar"></span>
+        <span class="btn-bar"></span>
+        <span class="btn-bar"></span>
+    </button>
+</div>
+
+<div class="index-about">
+    <i> 不积跬步无以至千里,no pain no gain </i>
+</div>
+
+<div class="index-container">
+    
+    <div class="index-left">
+        
+<div class="nav" id="nav">
+    <div class="avatar-name">
+        <div class="avatar">
+            <img src="/imgs/favicon.jpg">
+        </div>
+        <div class="name">
+            <i>ChrisZhang</i>
+        </div>
+    </div>
+    <div class="contents" id="nav-content">
+        <ul>
+            <li>
+                <a href="/">
+                    <i class="iconfont icon-shouye1"></i>
+                    <span>主页</span>
+                </a>
+            </li>
+            <li>
+                <a href="/tags">
+                    <i class="iconfont icon-biaoqian1"></i>
+                    <span>标签</span>
+                </a>
+            </li>
+            <li>
+                <a href="/archive">
+                    <i class="iconfont icon-guidang2"></i>
+                    <span>存档</span>
+                </a>
+            </li>
+            <li>
+                <a href="/about/">
+                    <i class="iconfont icon-guanyu2"></i>
+                    <span>关于</span>
+                </a>
+            </li>
+            
+            <li>
+                <a id="search">
+                    <i class="iconfont icon-sousuo1"></i>
+                    <span>搜索</span>
+                </a>
+            </li>
+            
+        </ul>
+    </div>
+    
+        <div id="toc" class="toc-article">
+    
+</div>
+    
+</div>
+
+
+<div class="search-field" id="search-field">
+    <div class="search-container">
+        <div class="search-input">
+            <span id="esc-search"> <i class="icon-fanhui iconfont"></i></span>
+            <input id="search-input">
+            <span id="begin-search">搜索</span>
+        </div>
+        <div class="search-result-container" id="search-result-container">
+
+        </div>
+    </div>
+</div>
+        <div class="index-about-mobile">
+            <i> 不积跬步无以至千里,no pain no gain </i>
+        </div>
+    </div>
+    
+    <div class="index-middle">
+        <!-- Main Content -->
+        
+
+
+<div class="post-container">
+    <div class="post-title">
+        关于SpringMVC的工作流程问题
+    </div>
+
+    <div class="post-meta">
+        <span class="attr">发布于：<span>2017-10-11 07:52:11</span></span>
+        
+        <span class="attr">标签：/
+        
+        <a class="tag" href="/tags/#java" title="java">java</a>
+        <span>/</span>
+        
+        <a class="tag" href="/tags/#经验总结" title="经验总结">经验总结</a>
+        <span>/</span>
+        
+        
+        </span>
+        <span class="attr">访问：<span id="busuanzi_value_page_pv"></span>
+</span>
+
+    </div>
+    <div class="post-content ">
+        <p>首先说明一下问题，之前遇到一个需求，是在springMVC中实现controller层的参数绑定。<br>参数绑定意思就是：</p>
+<figure class="highlight kotlin"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@RequestMapping(value = <span class="meta-string">"/validator/test"</span>, method = &#123;RequestMethod.GET&#125;)</span></span><br><span class="line"><span class="meta">@ResponseBody</span></span><br><span class="line"><span class="meta">@FdMethodValidate</span></span><br><span class="line"><span class="keyword">public</span> String validatorModelControl(</span><br><span class="line">        <span class="meta">@Min(10)</span> <span class="meta">@RequestParam(<span class="meta-string">"ten"</span>)</span> Integer ten,</span><br><span class="line">        <span class="meta">@RequestParam(<span class="meta-string">"ignore"</span>)</span> Integer ignore,</span><br><span class="line">        <span class="meta">@FdValidate</span>  TestModel testModel, FdValidResult result) &#123;</span><br><span class="line">    <span class="keyword">if</span> (result.hasErrors()) &#123;</span><br><span class="line">        List&lt;FdValidError&gt; lists = result.getErrors();</span><br><span class="line">        <span class="keyword">for</span> (FdValidError row : lists) &#123;</span><br><span class="line">            row.getErrorMessage();</span><br><span class="line">            LOGGER.error(row.getErrorMessage());</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="string">"success"</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>我希望在调用该接口之前先获取参数、进行逻辑操作、最后将输出结果绑定到FdValidResult中。</p>
+<p>最先想到的就是通过拦截器的在调用方法前进行预操作，并进行参数绑定。</p>
+<p>看起来好像很简单，实际上是却是一顿操作后打出了GG。</p>
+<hr>
+<p>为什么会没有办法进行参数绑定，我门一步一步的调试这看。</p>
+<p>首先在不知道请求参数的情况下，如果要获取传递的参数则必须要提前调用参数解析器ArgumentResolver（为什么会说提前，后面会讲），所以拦截器的工作大致是：</p>
+<ol>
+<li>获得参数签名</li>
+<li>找出能够解析该参数的ArgumentResolver，</li>
+<li>调用ArgumentResolver进行参数解析，流程是：<ol>
+<li>如果为基本类型，则是RequestParamMapMethodArgumentResolver来进行解析。这一块具体细节没有太做研究，大致是从request的请求参数名称与参数签名进行匹配，最终返回的是基本类型的值。</li>
+<li>如果为ModelAttribute，则调用ModelAttributeMethodProcessor来进行解析。具体细节首先调用DataBinder将参数与Model属性进行绑定，同时还会进行数据校验（另一个坑）并叫校验结果BindResult存入ModelAndViewContainer中</li>
+<li>如果是BindResult类型，则调用ErrorsMethodArgumentResolver进行解析，它会从ModelAndViewContainer中尝试获取该类型，如果存在则返回该对象，否则抛出异常。<figure class="highlight mipsasm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">public final Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer, NativeWebRequest webRequest, WebDataBinderFactory <span class="keyword">binderFactory) </span>throws Exception &#123;</span><br><span class="line">    String name = ModelFactory.getNameForParameter(parameter)<span class="comment">;</span></span><br><span class="line">    Object attribute = mavContainer.containsAttribute(name)?mavContainer.getModel().get(name):this.createAttribute(name, parameter, <span class="keyword">binderFactory, </span>webRequest)<span class="comment">;</span></span><br><span class="line">    WebDataBinder <span class="keyword">binder </span>= <span class="keyword">binderFactory.createBinder(webRequest, </span>attribute, name)<span class="comment">;</span></span><br><span class="line">    if(<span class="keyword">binder.getTarget() </span>!= null) &#123;</span><br><span class="line">        this.<span class="keyword">bindRequestParameters(binder, </span>webRequest)<span class="comment">;</span></span><br><span class="line">        this.validateIfApplicable(<span class="keyword">binder, </span>parameter)<span class="comment">;</span></span><br><span class="line">        if(<span class="keyword">binder.getBindingResult().hasErrors() </span>&amp;&amp; this.isBindExceptionRequired(<span class="keyword">binder, </span>parameter)) &#123;</span><br><span class="line">            throw new <span class="keyword">BindException(binder.getBindingResult());</span></span><br><span class="line"><span class="keyword"> </span>       &#125;</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    Map&lt;String, Object&gt; <span class="keyword">bindingResultModel </span>= <span class="keyword">binder.getBindingResult().getModel();</span></span><br><span class="line"><span class="keyword"> </span>   mavContainer.removeAttributes(<span class="keyword">bindingResultModel);</span></span><br><span class="line"><span class="keyword"> </span>   mavContainer.<span class="keyword">addAllAttributes(bindingResultModel);</span></span><br><span class="line"><span class="keyword"> </span>   return <span class="keyword">binder.convertIfNecessary(binder.getTarget(), </span>parameter.getParameterType(), parameter)<span class="comment">;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+</li>
+</ol>
+<figure class="highlight processing"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">Object</span> resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer, NativeWebRequest webRequest, WebDataBinderFactory binderFactory) <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">    ModelMap model = mavContainer.getModel();</span><br><span class="line">    <span class="keyword">if</span>(model.<span class="built_in">size</span>() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="built_in">int</span> lastIndex = model.<span class="built_in">size</span>() - <span class="number">1</span>;</span><br><span class="line">        <span class="keyword">String</span> lastKey = (<span class="keyword">String</span>)(<span class="keyword">new</span> ArrayList(model.keySet())).<span class="built_in">get</span>(lastIndex);</span><br><span class="line">        <span class="keyword">if</span>(lastKey.startsWith(BindingResult.MODEL_KEY_PREFIX)) &#123;</span><br><span class="line">            <span class="keyword">return</span> model.<span class="built_in">get</span>(lastKey);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> IllegalStateException(<span class="string">"An Errors/BindingResult argument is expected to be declared immediately after the model attribute, the @RequestBody or the @RequestPart arguments to which they apply: "</span> + parameter.getMethod());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>所以根据BindResult的解析逻辑，我只要将逻辑结果封装成一个DataBinder，并将其注入ModelAndViewContainer，貌似就完成了。</p>
+<p>当然没有那么简单，那么问题出现在哪里呢？</p>
+<p>从DispatchServlet开始走起：</p>
+<figure class="highlight kotlin"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">protected</span> void doDispatch(HttpServletRequest request, HttpServletResponse response) throws Exception &#123;</span><br><span class="line">    HttpServletRequest processedRequest = request;</span><br><span class="line">    HandlerExecutionChain mappedHandler = <span class="literal">null</span>;</span><br><span class="line">    boolean multipartRequestParsed = <span class="literal">false</span>;</span><br><span class="line">    WebAsyncManager asyncManager = WebAsyncUtils.getAsyncManager(request);</span><br><span class="line"> </span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        ModelAndView mv = <span class="literal">null</span>;</span><br><span class="line">        Exception dispatchException = <span class="literal">null</span>;</span><br><span class="line"> </span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            processedRequest = <span class="keyword">this</span>.checkMultipart(request);</span><br><span class="line">            multipartRequestParsed = processedRequest != request;</span><br><span class="line">            mappedHandler = <span class="keyword">this</span>.getHandler(processedRequest);</span><br><span class="line">            <span class="keyword">if</span>(mappedHandler == <span class="literal">null</span> || mappedHandler.getHandler() == <span class="literal">null</span>) &#123;</span><br><span class="line">                <span class="keyword">this</span>.noHandlerFound(processedRequest, response);</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line"> </span><br><span class="line">            HandlerAdapter ha = <span class="keyword">this</span>.getHandlerAdapter(mappedHandler.getHandler());</span><br><span class="line">            String method = request.getMethod();</span><br><span class="line">            boolean isGet = <span class="string">"GET"</span>.equals(method);</span><br><span class="line">            <span class="keyword">if</span>(isGet || <span class="string">"HEAD"</span>.equals(method)) &#123;</span><br><span class="line">                long lastModified = ha.getLastModified(request, mappedHandler.getHandler());</span><br><span class="line">                <span class="keyword">if</span>(<span class="keyword">this</span>.logger.isDebugEnabled()) &#123;</span><br><span class="line">                    <span class="keyword">this</span>.logger.debug(<span class="string">"Last-Modified value for ["</span> + getRequestUri(request) + <span class="string">"] is: "</span> + lastModified);</span><br><span class="line">                &#125;</span><br><span class="line"> </span><br><span class="line">                <span class="keyword">if</span>((new ServletWebRequest(request, response)).checkNotModified(lastModified) &amp;&amp; isGet) &#123;</span><br><span class="line">                    <span class="keyword">return</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line"> </span><br><span class="line">            <span class="keyword">if</span>(!mappedHandler.applyPreHandle(processedRequest, response)) &#123;</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line"> </span><br><span class="line">            mv = ha.handle(processedRequest, response, mappedHandler.getHandler());</span><br><span class="line">            <span class="keyword">if</span>(asyncManager.isConcurrentHandlingStarted()) &#123;</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line"> </span><br><span class="line">            <span class="keyword">this</span>.applyDefaultViewName(request, mv);</span><br><span class="line">            mappedHandler.applyPostHandle(processedRequest, response, mv);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception var19) &#123;</span><br><span class="line">            dispatchException = var19;</span><br><span class="line">        &#125;</span><br><span class="line"> </span><br><span class="line">        <span class="keyword">this</span>.processDispatchResult(processedRequest, response, mappedHandler, mv, dispatchException);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (Exception var20) &#123;</span><br><span class="line">        <span class="keyword">this</span>.triggerAfterCompletion(processedRequest, response, mappedHandler, var20);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (Error var21) &#123;</span><br><span class="line">        <span class="keyword">this</span>.triggerAfterCompletionWithError(processedRequest, response, mappedHandler, var21);</span><br><span class="line">    &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">        <span class="keyword">if</span>(asyncManager.isConcurrentHandlingStarted()) &#123;</span><br><span class="line">            <span class="keyword">if</span>(mappedHandler != <span class="literal">null</span>) &#123;</span><br><span class="line">                mappedHandler.applyAfterConcurrentHandlingStarted(processedRequest, response);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span>(multipartRequestParsed) &#123;</span><br><span class="line">            <span class="keyword">this</span>.cleanupMultipart(processedRequest);</span><br><span class="line">        &#125;</span><br><span class="line"> </span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>前面通过HandlerMapping找到对应的Handler过程省略掉不关键，关键是我们能看到HanderAdpater执行handler之前会先拦截器的执行preHandle。</p>
+<p>那这又有什么关系呢？我们想起之前在prehandle进行操作的过程，期间再参数解析ArgumentResolve的时候使用了ModelAndViewContiner这个关键的容器。</p>
+<p>那我们再看继续调试，看看预处理后的HandlerAdapter怎么做处理，继续一步一步调试，然后最终会执行RequestMappingHandlerAdapter这个实现类的这个方法：</p>
+<figure class="highlight kotlin"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> ModelAndView invokeHandleMethod(HttpServletRequest request, HttpServletResponse response, HandlerMethod handlerMethod) throws Exception &#123;</span><br><span class="line">    ServletWebRequest webRequest = new ServletWebRequest(request, response);</span><br><span class="line">    WebDataBinderFactory binderFactory = <span class="keyword">this</span>.getDataBinderFactory(handlerMethod);</span><br><span class="line">    ModelFactory modelFactory = <span class="keyword">this</span>.getModelFactory(handlerMethod, binderFactory);</span><br><span class="line">    ServletInvocableHandlerMethod requestMappingMethod = <span class="keyword">this</span>.createRequestMappingMethod(handlerMethod, binderFactory);</span><br><span class="line">    ModelAndViewContainer mavContainer = new ModelAndViewContainer();</span><br><span class="line">    mavContainer.addAllAttributes(RequestContextUtils.getInputFlashMap(request));</span><br><span class="line">    modelFactory.initModel(webRequest, mavContainer, requestMappingMethod);</span><br><span class="line">    mavContainer.setIgnoreDefaultModelOnRedirect(<span class="keyword">this</span>.ignoreDefaultModelOnRedirect);</span><br><span class="line">    AsyncWebRequest asyncWebRequest = WebAsyncUtils.createAsyncWebRequest(request, response);</span><br><span class="line">    asyncWebRequest.setTimeout(<span class="keyword">this</span>.asyncRequestTimeout);</span><br><span class="line">    WebAsyncManager asyncManager = WebAsyncUtils.getAsyncManager(request);</span><br><span class="line">    asyncManager.setTaskExecutor(<span class="keyword">this</span>.taskExecutor);</span><br><span class="line">    asyncManager.setAsyncWebRequest(asyncWebRequest);</span><br><span class="line">    asyncManager.registerCallableInterceptors(<span class="keyword">this</span>.callableInterceptors);</span><br><span class="line">    asyncManager.registerDeferredResultInterceptors(<span class="keyword">this</span>.deferredResultInterceptors);</span><br><span class="line">    <span class="keyword">if</span>(asyncManager.hasConcurrentResult()) &#123;</span><br><span class="line">        Object result = asyncManager.getConcurrentResult();</span><br><span class="line">        mavContainer = (ModelAndViewContainer)asyncManager.getConcurrentResultContext()[<span class="number">0</span>];</span><br><span class="line">        asyncManager.clearConcurrentResult();</span><br><span class="line">        <span class="keyword">if</span>(<span class="keyword">this</span>.logger.isDebugEnabled()) &#123;</span><br><span class="line">            <span class="keyword">this</span>.logger.debug(<span class="string">"Found concurrent result value ["</span> + result + <span class="string">"]"</span>);</span><br><span class="line">        &#125;</span><br><span class="line"> </span><br><span class="line">        requestMappingMethod = requestMappingMethod.wrapConcurrentResult(result);</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    requestMappingMethod.invokeAndHandle(webRequest, mavContainer, new Object[<span class="number">0</span>]);</span><br><span class="line">    <span class="keyword">return</span> asyncManager.isConcurrentHandlingStarted()?<span class="literal">null</span>:<span class="keyword">this</span>.getModelAndView(mavContainer, modelFactory, webRequest);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>看到这里就明白了，无论你在拦截器中如何定义DataBinder如何声明ModelAndViewContainer容器，在拦截器执行后执行Handler时都会被重置。这就是在拦截器不可能进行参数绑定的原因，因为拦截器的执行要先于HandlerAdapter的执行的。</p>
+<hr>
+<p>最后附一张到来的SpringMVC的执行流程图，加深一下印象：<br><img src="http://neoremind.com/wp-content/uploads/060828381f30e92466d592d34e086e061c95f7db.png" alt="image"></p>
+<p>个人理解，欢迎讨论</p>
+
+        
+        <br>
+        <div id="comment-container">
+        </div>
+        <div id="disqus_thread"></div>
+
+        <div id="lv-container">
+        </div>
+
+    </div>
+</div>
+    </div>
+</div>
+
+
+<footer class="footer">
+    <ul class="list-inline text-center">
+        
+        
+
+        
+
+        
+
+        
+
+        
+
+    </ul>
+    
+    <p>
+        <span id="busuanzi_container_site_pv">
+            <span id="busuanzi_value_site_pv"></span>PV
+        </span>
+        <span id="busuanzi_container_site_uv">
+            <span id="busuanzi_value_site_uv"></span>UV
+        </span>
+        Created By <a href="https://hexo.io/">Hexo</a>  Theme <a href="https://github.com/aircloud/hexo-theme-aircloud">AirCloud</a></p>
+</footer>
+
+
+
+
+</body>
+
+<script>
+    // We expose some of the variables needed by the front end
+    window.hexo_search_path = "search.json"
+    window.hexo_root = "/"
+    window.isPost = true
+</script>
+<script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+<script src="/js/index.js"></script>
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+</html>
