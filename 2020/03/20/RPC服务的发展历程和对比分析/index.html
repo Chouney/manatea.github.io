@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 3.9.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"chouney.github.io","root":"/","scheme":"Muse","version":"7.7.2","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":true},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":true,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"livere","storage":true,"lazyload":true,"nav":null,"activeClass":"livere"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.json"};
+  </script>
+
+  <meta name="description" content="RPC&amp;#x670D;&amp;#x52A1;&amp;#x7684;&amp;#x53D1;&amp;#x5C55;&amp;#x5386;&amp;#x7A0B;&amp;#x548C;&amp;#x5BF9;&amp;#x6BD4;&amp;#x5206;&amp;#x6790;&amp;#x7F51;&amp;#x7EDC;&amp;#x7F16;&amp;#x7A0B;&amp;#x672F;&amp;#x8BED;&amp;#xFF1A;  &amp;#x5B58;&amp;#x6839;&amp;#xFF08;stub&amp;#xFF09;&amp;#xFF0C">
+<meta name="keywords" content="读书笔记,可伸缩服务架构+中间件">
+<meta property="og:type" content="article">
+<meta property="og:title" content="RPC服务的发展历程和对比分析">
+<meta property="og:url" content="https://chouney.github.io/2020/03/20/RPC服务的发展历程和对比分析/index.html">
+<meta property="og:site_name" content="Chris的劳动者港湾">
+<meta property="og:description" content="RPC&amp;#x670D;&amp;#x52A1;&amp;#x7684;&amp;#x53D1;&amp;#x5C55;&amp;#x5386;&amp;#x7A0B;&amp;#x548C;&amp;#x5BF9;&amp;#x6BD4;&amp;#x5206;&amp;#x6790;&amp;#x7F51;&amp;#x7EDC;&amp;#x7F16;&amp;#x7A0B;&amp;#x672F;&amp;#x8BED;&amp;#xFF1A;  &amp;#x5B58;&amp;#x6839;&amp;#xFF08;stub&amp;#xFF09;&amp;#xFF0C">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="https://chouney.github.io/imgs/rpc_1.png">
+<meta property="og:image" content="https://chouney.github.io/imgs/rpc_3.png">
+<meta property="og:image" content="https://chouney.github.io/imgs/rpc_2.png">
+<meta property="og:updated_time" content="2020-03-23T07:52:43.383Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="RPC服务的发展历程和对比分析">
+<meta name="twitter:description" content="RPC&amp;#x670D;&amp;#x52A1;&amp;#x7684;&amp;#x53D1;&amp;#x5C55;&amp;#x5386;&amp;#x7A0B;&amp;#x548C;&amp;#x5BF9;&amp;#x6BD4;&amp;#x5206;&amp;#x6790;&amp;#x7F51;&amp;#x7EDC;&amp;#x7F16;&amp;#x7A0B;&amp;#x672F;&amp;#x8BED;&amp;#xFF1A;  &amp;#x5B58;&amp;#x6839;&amp;#xFF08;stub&amp;#xFF09;&amp;#xFF0C">
+<meta name="twitter:image" content="https://chouney.github.io/imgs/rpc_1.png">
+
+<link rel="canonical" href="https://chouney.github.io/2020/03/20/RPC服务的发展历程和对比分析/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>RPC服务的发展历程和对比分析 | Chris的劳动者港湾</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Chris的劳动者港湾</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">不积跬步无以至千里,no pain no gain</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+  <a role="button" class="book-mark-link book-mark-link-fixed"></a>
+
+  <a href="https://github.com/chouney" class="github-corner" title="Follow me on GitHub" aria-label="Follow me on GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://chouney.github.io/2020/03/20/RPC服务的发展历程和对比分析/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="ChrisZhang">
+      <meta itemprop="description" content="张琪祥的博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Chris的劳动者港湾">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          RPC服务的发展历程和对比分析
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-03-20 06:03:11" itemprop="dateCreated datePublished" datetime="2020-03-20T06:03:11+08:00">2020-03-20</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-03-23 15:52:43" itemprop="dateModified" datetime="2020-03-23T15:52:43+08:00">2020-03-23</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="rpcx670dx52a1x7684x53d1x5c55x5386x7a0bx548cx5bf9x6bd4x5206x6790">RPC&#x670D;&#x52A1;&#x7684;&#x53D1;&#x5C55;&#x5386;&#x7A0B;&#x548C;&#x5BF9;&#x6BD4;&#x5206;&#x6790;</h2><p>&#x7F51;&#x7EDC;&#x7F16;&#x7A0B;&#x672F;&#x8BED;&#xFF1A;</p>
+<ul>
+<li>&#x5B58;&#x6839;&#xFF08;stub&#xFF09;&#xFF0C;&#x5C31;&#x50CF;&#x4EE3;&#x7406;&#x6A21;&#x5F0F;&#x91CC;&#x7684;&#x4EE3;&#x7406;agent&#x4E00;&#x6837;&#xFF0C;&#x8D1F;&#x8D23;&#x8FDE;&#x63A5;&#x65F6;&#x521D;&#x59CB;&#x5316;&#x7F51;&#x7EDC;&#x901A;&#x4FE1;&#x4E0A;&#x4E0B;&#x6587;&#x73AF;&#x5883;&#xFF0C;&#x4F7F;&#x8C03;&#x7528;&#x8005;&#x548C;&#x670D;&#x52A1;&#x65B9;&#x7684;&#x51FD;&#x6570;&#x672C;&#x5730;&#x900F;&#x660E;&#x5316;&#x3002;</li>
+<li>&#x7F16;&#x7801;&#xFF08;encode&#xFF09;&#xFF0C;&#x5C06;&#x8BF7;&#x6C42;&#x62A5;&#x6587;&#x5C01;&#x88C5;&#x5230;&#x7F51;&#x7EDC;&#x6D88;&#x606F;&#x4E2D;&#x7684;&#x8FC7;&#x7A0B;&#x88AB;&#x79F0;&#x4E3A;&#x7F16;&#x7801;(encode)</li>
+<li>&#x89E3;&#x7801;&#xFF08;decode&#xFF09;,&#x5C06;&#x8BF7;&#x6C42;&#x62A5;&#x6587;&#x4ECE;&#x6807;&#x51C6;&#x7684;&#x7F51;&#x7EDC;&#x683C;&#x5F0F;&#x8F6C;&#x6362;&#x6210;&#x5BF9;&#x5E94;&#x8BED;&#x8A00;&#x683C;&#x5F0F;&#x7684;&#x8FC7;&#x7A0B;&#x88AB;&#x79F0;&#x4F5C;&#x89E3;&#x7801;decode&#x3002;<blockquote>
+<p>&#x5728;&#x9605;&#x8BFB;netty&#x7684;&#x6E90;&#x7801;&#x65F6;&#x7ECF;&#x5E38;&#x80FD;&#x770B;&#x5230;encode&#x548C;decode&#x7684;&#x51FA;&#x73B0;&#xFF0C;&#x57FA;&#x4E8E;&#x8FD9;&#x4E2A;&#x6982;&#x5FF5;&#x80FD;&#x66F4;&#x597D;&#x7684;&#x7406;&#x89E3;netty&#x7684;&#x6574;&#x4E2A;&#x901A;&#x4FE1;&#x8FC7;&#x7A0B;&#x3002;</p>
+</blockquote>
+</li>
+</ul>
+<hr>
+<h3 id="x7f51x7edcx901ax4fe1x8fc7x7a0b">&#x7F51;&#x7EDC;&#x901A;&#x4FE1;&#x8FC7;&#x7A0B;</h3><p>&#x9996;&#x5148;&#x8981;&#x4E86;&#x89E3;&#x7F51;&#x7EDC;&#x7F16;&#x7A0B;&#x63A5;&#x53E3;&#x7684;&#x57FA;&#x7840;Socket&#x5957;&#x63A5;&#x5B57;&#xFF0C;&#x5B83;&#x5176;&#x5B9E;&#x662F;&#x4E00;&#x4E2A;&#x901A;&#x8FC7;ip+&#x7AEF;&#x53E3;&#x8FDE;&#x63A5;&#x4E24;&#x7AEF;&#x901A;&#x4FE1;&#x7684;&#x4E00;&#x4E2A;&#x53E5;&#x67C4;&#xFF0C;socket&#x7531;&#x64CD;&#x4F5C;&#x7CFB;&#x7EDF;&#x5185;&#x6838;&#x63D0;&#x4F9B;&#xFF0C;&#x4E3A;&#x4F7F;&#x7528;&#x65B9;&#x5411;&#x4E0B;&#x5C4F;&#x853D;&#x4E86;&#x4F20;&#x8F93;&#x534F;&#x8BAE;&#xFF08;TCP&#x3001;UDP&#xFF09;&#x7684;&#x5177;&#x4F53;&#x7EC6;&#x8282;&#x3002;&#x5982;&#x56FE;&#x6240;&#x793A;&#xFF1A;</p>
+<img src="/imgs/rpc_1.png" width="60%">
+
+<blockquote>
+<p>ps :&#x5C31;&#x50CF;socket&#x5C4F;&#x853D;&#x4E86;&#x4F20;&#x8F93;&#x534F;&#x8BAE;&#x7684;&#x901A;&#x4FE1;&#x7EC6;&#x8282;&#x4E00;&#x6837;&#xFF0C;&#x5B58;&#x6839;stub&#x5C4F;&#x853D;&#x4E86;&#x8C03;&#x7528;&#x65F6;&#x7684;&#x5C06;&#x8BF7;&#x6C42;/&#x54CD;&#x5E94;&#x7ED3;&#x679C;&#x7F16;&#x7801;(encode)&#x89E3;&#x7801;(decode)&#x7684;&#x7EC6;&#x8282;&#x3002;</p>
+</blockquote>
+<hr>
+<h3 id="rpcx670dx52a1x7684x53d1x5c55x5386x7a0b">RPC&#x670D;&#x52A1;&#x7684;&#x53D1;&#x5C55;&#x5386;&#x7A0B;</h3><h4 id="x9762x5411x8fc7x7a0bx7684x51fdx6570x5f0frpcx65b9x5f0f">&#x9762;&#x5411;&#x8FC7;&#x7A0B;&#x7684;&#x51FD;&#x6570;&#x5F0F;RPC&#x65B9;&#x5F0F;</h4><p>ONC RPC&#x662F;&#x4E00;&#x4E2A;&#x975E;&#x5E38;&#x8F7B;&#x91CF;&#x7EA7;&#x7684;RPC&#x534F;&#x8BAE;&#xFF0C;&#x53EF;&#x7528;&#x4E8E;&#x7C7B;POSIX&#x7684;&#x64CD;&#x4F5C;&#x7CFB;&#x7EDF;&#x548C;POSIX&#x7684;&#x64CD;&#x4F5C;&#x7CFB;&#x7EDF;&#x3002;</p>
+<p>&#x5176;&#x7F16;&#x8BD1;&#x5668;&#x7528;&#x4E8E;&#x751F;&#x6210;&#x5BA2;&#x6237;&#x7AEF;&#x548C;&#x670D;&#x52A1;&#x7AEF;&#x7684;&#x5B58;&#x6839;&#x51FD;&#x6570;&#xFF0C;&#x7A0B;&#x5E8F;&#x5458;&#x9700;&#x63D0;&#x4F9B;&#x63A5;&#x53E3;&#x5B9A;&#x4E49;&#x6587;&#x4EF6;&#x3001;&#x51FD;&#x6570;&#x58F0;&#x660E;&#x3001;&#x7248;&#x672C;&#x53F7;&#x3001;&#x548C;&#x552F;&#x4E00;&#x7A0B;&#x5E8F;&#x7F16;&#x53F7;&#x3002;</p>
+<p>&#x7136;&#x540E;&#x8981;&#x4F20;&#x8F93;&#x7684;&#x5165;&#x53C2;&#x4F1A;&#x88AB;&#x5C01;&#x88C5;&#x5230;<strong>XDR(&#x5916;&#x90E8;&#x6570;&#x636E;&#x8868;&#x793A;)</strong>&#x8FD9;&#x4E2A;&#x6570;&#x636E;&#x7ED3;&#x6784;&#x4E2D;&#xFF0C;&#x6765;&#x5B9E;&#x73B0;&#x7AEF;&#x5230;&#x7AEF;&#x7684;&#x534F;&#x8BAE;&#x7F16;&#x7801;&#x548C;&#x89E3;&#x7801;&#x3002;</p>
+<p>&#x6700;&#x540E;&#x901A;&#x8FC7;RPC&#x5C01;&#x88C5;&#x7684;&#x4E00;&#x4E2A;&#x8FD0;&#x884C;&#x65F6;&#x5E93;&#xFF0C;&#x5B9E;&#x73B0;&#x5FC5;&#x8981;&#x7684;Sockect&#x5957;&#x63A5;&#x5B57;&#x6765;&#x8FDB;&#x884C;RPC&#x8C03;&#x7528;&#x3002;</p>
+<blockquote>
+<p>&#x5177;&#x4F53;&#x7684;ONC RPC&#x5B9A;&#x4E49;&#x6587;&#x4EF6;&#x5C31;&#x4E0D;&#x5177;&#x4F53;&#x4ECB;&#x7ECD;&#x4E86;&#xFF0C;&#x6709;&#x5174;&#x8DA3;&#x7684;&#x540C;&#x5B66;&#x53EF;&#x4EE5;&#x81EA;&#x884C;&#x67E5;&#x8BE2;&#x5B66;&#x4E60;&#x3002;</p>
+</blockquote>
+<p>&#x6574;&#x4F53;&#x7684;&#x8C03;&#x7528;&#x8FC7;&#x7A0B;&#x5982;&#x56FE;&#xFF1A;</p>
+<img src="/imgs/rpc_3.png" width="60%">
+
+<ol>
+<li>&#x542F;&#x52A8;&#x670D;&#x52A1;&#x5668;&#x540E;&#xFF0C;&#x7A0B;&#x5E8F;&#x4F1A;&#x521B;&#x5EFA;&#x4E00;&#x4E2A;socket&#x5957;&#x63A5;&#x5B57;&#xFF0C;&#x5E76;<strong>&#x8C03;&#x7528;svc_register&#x51FD;&#x6570;&#x6765;&#x6CE8;&#x518C;</strong>&#x7A0B;&#x5E8F;&#x53F7;&#x548C;&#x7248;&#x672C;&#x53F7;&#x5230;port mapper&#x4E2D;&#xFF08;&#x7AEF;&#x53E3;&#x6620;&#x5C04;&#x5668;&#xFF0C;&#x72EC;&#x7ACB;&#x7684;&#x8FDB;&#x7A0B;&#xFF09;&#x3002;</li>
+<li>&#x542F;&#x52A8;&#x5BA2;&#x6237;&#x7AEF;&#x7A0B;&#x5E8F;&#x65F6;&#xFF0C;&#x4F1A;&#x6839;&#x636E;&#x8C03;&#x7528;&#x540D;&#x79F0;&#x3001;&#x7A0B;&#x5E8F;&#x53F7;&#x7248;&#x672C;&#x53F7;&#x7B49;<strong>&#x8C03;&#x7528;clnt_create&#x4ECE;portmapper&#x4E2D;&#x83B7;&#x53D6;&#x8FDC;&#x7A0B;&#x7CFB;&#x7EDF;&#x7684;&#x7AEF;&#x53E3;&#x8FDB;&#x884C;&#x8FDE;&#x63A5;</strong>&#x3002;</li>
+<li>&#x5BA2;&#x6237;&#x7AEF;&#x8C03;&#x7528;&#x5B58;&#x6839;&#x51FD;&#x6570;&#xFF0C;&#x5B58;&#x6839;&#x51FD;&#x6570;&#x4F7F;&#x7528;&#x7AEF;&#x53E3;&#x53F7;&#x53D1;&#x9001;&#x8BF7;&#x6C42;&#xFF0C;&#x5E76;&#x7B49;&#x5F85;&#x8FD4;&#x56DE;&#x54CD;&#x5E94;&#x3002;</li>
+<li>&#x670D;&#x52A1;&#x7AEF;&#x6536;&#x5230;&#x6D88;&#x606F;&#xFF0C;&#x7531;&#x5B58;&#x6839;&#x51FD;&#x6570;&#x8C03;&#x7528;&#x5E76;&#x6267;&#x884C;&#x672C;&#x5730;&#x51FD;&#x6570;&#xFF0C;&#x8FD4;&#x56DE;&#x7ED9;&#x5BA2;&#x6237;&#x7AEF;&#x3002;</li>
+</ol>
+<blockquote>
+<p>&#x8FD9;&#x91CC;&#x7684;portmapper&#x7684;&#x4F5C;&#x7528;&#x5C31;&#x662F;&#x670D;&#x52A1;&#x6CE8;&#x518C;&#x7684;&#x529F;&#x80FD;&#x3002;</p>
+</blockquote>
+<h4 id="x9762x5411x5bf9x8c61x7684rpcx65b9x5f0f">&#x9762;&#x5411;&#x5BF9;&#x8C61;&#x7684;RPC&#x65B9;&#x5F0F;</h4><blockquote>
+<p>&#x4E3B;&#x8981;&#x4EE3;&#x8868;&#x662F;CORBA&#x3001;&#x548C;JAVA RMI&#xFF0C;&#x8FD9;&#x91CC;&#x4E0D;&#x8BE6;&#x7EC6;&#x8BF4;&#x660E;&#x4E86;&#x3002;</p>
+</blockquote>
+<h4 id="soax548cx5faex670dx52a1">SOA&#x548C;&#x5FAE;&#x670D;&#x52A1;</h4><ul>
+<li>Thrift<br>&#x5982;&#x56FE;</li>
+</ul>
+<img src="/imgs/rpc_2.png" width="60%">
+
+<ul>
+<li>ZeroCICe</li>
+<li>gRPC&#xFF0C;&#x4F7F;&#x7528;ProtoBuf&#x4F5C;&#x4E3A;&#x5E8F;&#x5217;&#x5316;&#x5DE5;&#x5177;&#xFF0C;&#x7528;IDL&#x4F5C;&#x4E3A;&#x8DE8;&#x5E73;&#x53F0;&#x534F;&#x8BAE;&#x8BED;&#x8A00;&#x3002;</li>
+<li>Dubbo,&#x4E3B;&#x8981;&#x63D0;&#x4F9B;&#x4E09;&#x65B9;&#x9762;&#x529F;&#x80FD;&#xFF0C;&#x8FDC;&#x7A0B;&#x670D;&#x52A1;&#x8C03;&#x7528;&#xFF1B;&#x8D1F;&#x8F7D;&#x5747;&#x8861;&#x548C;&#x5BB9;&#x9519;&#xFF1B;&#x670D;&#x52A1;&#x6CE8;&#x518C;&#x548C;&#x53D1;&#x73B0;&#x3002;</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>ChrisZhang
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="https://chouney.github.io/2020/03/20/RPC服务的发展历程和对比分析/" title="RPC服务的发展历程和对比分析">https://chouney.github.io/2020/03/20/RPC服务的发展历程和对比分析/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/读书笔记/" rel="tag"># 读书笔记</a>
+              <a href="/tags/可伸缩服务架构-中间件/" rel="tag"># 可伸缩服务架构+中间件</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/03/20/分布式定时任务/" rel="prev" title="分布式定时任务">
+      <i class="fa fa-chevron-left"></i> 分布式定时任务
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/03/23/JVM_2_垃圾回收算法/" rel="next" title="《深入理解JVM系列》之垃圾回收算法（二）">
+      《深入理解JVM系列》之垃圾回收算法（二） <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+    
+  <div class="comments">
+    <div id="lv-container" data-id="city" data-uid="MTAyMC80NDYxMS8yMTE0MA=="></div>
+  </div>
+  
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#rpcx670dx52a1x7684x53d1x5c55x5386x7a0bx548cx5bf9x6bd4x5206x6790"><span class="nav-text">RPC服务的发展历程和对比分析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#x7f51x7edcx901ax4fe1x8fc7x7a0b"><span class="nav-text">网络通信过程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rpcx670dx52a1x7684x53d1x5c55x5386x7a0b"><span class="nav-text">RPC服务的发展历程</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#x9762x5411x8fc7x7a0bx7684x51fdx6570x5f0frpcx65b9x5f0f"><span class="nav-text">面向过程的函数式RPC方式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#x9762x5411x5bf9x8c61x7684rpcx65b9x5f0f"><span class="nav-text">面向对象的RPC方式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#soax548cx5faex670dx52a1"><span class="nav-text">SOA和微服务</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">ChrisZhang</p>
+  <div class="site-description" itemprop="description">张琪祥的博客</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">16</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">8</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">ChrisZhang</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script>
+<script src="/js/schemes/muse.js"></script>
+<script src="/js/next-boot.js"></script><script src="/js/bookmark.js"></script>
+
+
+
+  
+  <script>
+    (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      bp.src = (curProtocol === 'https') ? 'https://zz.bdstatic.com/linksubmit/push.js' : 'http://push.zhanzhang.baidu.com/push.js';
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+    })();
+  </script>
+
+
+
+
+  <script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+      
+
+<script>
+  if (typeof MathJax === 'undefined') {
+    window.MathJax = {
+      loader: {
+          load: ['[tex]/mhchem'],
+        source: {
+          '[tex]/amsCd': '[tex]/amscd',
+          '[tex]/AMScd': '[tex]/amscd'
+        }
+      },
+      tex: {
+        inlineMath: {'[+]': [['$', '$']]},
+          packages: {'[+]': ['mhchem']},
+        tags: 'ams'
+      },
+      options: {
+        renderActions: {
+          findScript: [10, doc => {
+            document.querySelectorAll('script[type^="math/tex"]').forEach(node => {
+              const display = !!node.type.match(/; *mode=display/);
+              const math = new doc.options.MathItem(node.textContent, doc.inputJax[0], display);
+              const text = document.createTextNode('');
+              node.parentNode.replaceChild(text, node);
+              math.start = {node: text, delim: '', n: 0};
+              math.end = {node: text, delim: '', n: 0};
+              doc.math.push(math);
+            });
+          }, '', false],
+          insertedScript: [200, () => {
+            document.querySelectorAll('mjx-container').forEach(node => {
+              let target = node.parentNode;
+              if (target.nodeName.toLowerCase() === 'li') {
+                target.parentNode.classList.add('has-jax');
+              }
+            });
+          }, '', false]
+        }
+      }
+    };
+    (function () {
+      var script = document.createElement('script');
+      script.src = '//cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js';
+      script.defer = true;
+      document.head.appendChild(script);
+    })();
+  } else {
+    MathJax.startup.document.state(0);
+    MathJax.texReset();
+    MathJax.typeset();
+  }
+</script>
+
+    
+
+  
+
+<script>
+NexT.utils.loadComments(document.querySelector('#lv-container'), () => {
+  window.livereOptions = {
+    refer: location.pathname.replace(CONFIG.root, '').replace('index.html', '')
+  };
+  (function(d, s) {
+    var j, e = d.getElementsByTagName(s)[0];
+    if (typeof LivereTower === 'function') { return; }
+    j = d.createElement(s);
+    j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+    j.async = true;
+    e.parentNode.insertBefore(j, e);
+  })(document, 'script');
+});
+</script>
+
+</body>
+</html>

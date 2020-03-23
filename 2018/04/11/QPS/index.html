@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 3.9.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"chouney.github.io","root":"/","scheme":"Muse","version":"7.7.2","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":true},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":true,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"livere","storage":true,"lazyload":true,"nav":null,"activeClass":"livere"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.json"};
+  </script>
+
+  <meta name="description" content="QPS&amp;#x4E0E;&amp;#x6700;&amp;#x4F73;&amp;#x7EBF;&amp;#x7A0B;&amp;#x6570;&amp;#x8BBE;&amp;#x8BA1;&amp;#x7684;&amp;#x5B66;&amp;#x4E60;&amp;#x4E00;.QPS&amp;#x548C;RT&amp;#x5728;&amp;#x7406;&amp;#x89E3;&amp;#x6700;&amp;#x4F73;&amp;#x7EBF;&amp;#x7A0B;&amp;#x6570;&amp;#x4E4B;&amp;#x524D;&amp;#xFF0C">
+<meta name="keywords" content="基础积累">
+<meta property="og:type" content="article">
+<meta property="og:title" content="QPS与最佳线程数设计的学习">
+<meta property="og:url" content="https://chouney.github.io/2018/04/11/QPS/index.html">
+<meta property="og:site_name" content="Chris的劳动者港湾">
+<meta property="og:description" content="QPS&amp;#x4E0E;&amp;#x6700;&amp;#x4F73;&amp;#x7EBF;&amp;#x7A0B;&amp;#x6570;&amp;#x8BBE;&amp;#x8BA1;&amp;#x7684;&amp;#x5B66;&amp;#x4E60;&amp;#x4E00;.QPS&amp;#x548C;RT&amp;#x5728;&amp;#x7406;&amp;#x89E3;&amp;#x6700;&amp;#x4F73;&amp;#x7EBF;&amp;#x7A0B;&amp;#x6570;&amp;#x4E4B;&amp;#x524D;&amp;#xFF0C">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2020-03-23T07:52:43.383Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="QPS与最佳线程数设计的学习">
+<meta name="twitter:description" content="QPS&amp;#x4E0E;&amp;#x6700;&amp;#x4F73;&amp;#x7EBF;&amp;#x7A0B;&amp;#x6570;&amp;#x8BBE;&amp;#x8BA1;&amp;#x7684;&amp;#x5B66;&amp;#x4E60;&amp;#x4E00;.QPS&amp;#x548C;RT&amp;#x5728;&amp;#x7406;&amp;#x89E3;&amp;#x6700;&amp;#x4F73;&amp;#x7EBF;&amp;#x7A0B;&amp;#x6570;&amp;#x4E4B;&amp;#x524D;&amp;#xFF0C">
+
+<link rel="canonical" href="https://chouney.github.io/2018/04/11/QPS/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>QPS与最佳线程数设计的学习 | Chris的劳动者港湾</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Chris的劳动者港湾</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">不积跬步无以至千里,no pain no gain</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+  <a role="button" class="book-mark-link book-mark-link-fixed"></a>
+
+  <a href="https://github.com/chouney" class="github-corner" title="Follow me on GitHub" aria-label="Follow me on GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://chouney.github.io/2018/04/11/QPS/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="ChrisZhang">
+      <meta itemprop="description" content="张琪祥的博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Chris的劳动者港湾">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          QPS与最佳线程数设计的学习
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-04-11 11:10:15" itemprop="dateCreated datePublished" datetime="2018-04-11T11:10:15+08:00">2018-04-11</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-03-23 15:52:43" itemprop="dateModified" datetime="2020-03-23T15:52:43+08:00">2020-03-23</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="qpsx4e0ex6700x4f73x7ebfx7a0bx6570x8bbex8ba1x7684x5b66x4e60">QPS&#x4E0E;&#x6700;&#x4F73;&#x7EBF;&#x7A0B;&#x6570;&#x8BBE;&#x8BA1;&#x7684;&#x5B66;&#x4E60;</h2><h3 id="x4e00qpsx548crt">&#x4E00;.QPS&#x548C;RT</h3><p>&#x5728;&#x7406;&#x89E3;&#x6700;&#x4F73;&#x7EBF;&#x7A0B;&#x6570;&#x4E4B;&#x524D;&#xFF0C;&#x9700;&#x8981;&#x4E86;&#x89E3;&#x4E24;&#x4E2A;&#x6982;&#x5FF5;</p>
+<p><strong>QPS</strong>&#xFF1A;&#x6BCF;&#x79D2;&#x5904;&#x7406;&#x8BF7;&#x6C42;&#x6B21;&#x6570;&#xFF0C;&#x6307;&#x7684;&#x662F;&#x4E00;&#x6B21;&#x4E1A;&#x52A1;&#x573A;&#x666F;&#x4E0B;&#x8BF7;&#x6C42;&#x3002;</p>
+<p><strong>RT</strong>&#xFF1A;&#x54CD;&#x5E94;&#x65F6;&#x95F4;&#xFF0C;&#x4ECE;&#x8BF7;&#x6C42;&#x53D1;&#x9001;&#x540E;&#x5230;&#x8BF7;&#x6C42;&#x8FD4;&#x56DE;&#x540E;&#x7684;&#x54CD;&#x5E94;&#x65F6;&#x95F4;</p>
+<blockquote>
+<p>&#x901A;&#x5E38;&#x6765;&#x8BF4;&#x5206;&#x4E3A;&#x5BA2;&#x6237;&#x7AEF;RT&#x548C;&#x670D;&#x52A1;&#x7AEF;RT&#xFF0C;&#x5176;&#x4E2D;&#x56E0;&#x4E3A;&#x5BA2;&#x6237;&#x7AEF;&#x7684;&#x8BF7;&#x6C42;&#x8981;&#x7ECF;&#x8FC7;&#x670D;&#x52A1;&#x7AEF;&#xFF0C;&#x56E0;&#x6B64;&#x5BA2;&#x6237;&#x7AEF;RT&#x5F80;&#x5F80;&#x8981;&#x5927;&#x4E8E;&#x670D;&#x52A1;&#x7AEF;RT</p>
+</blockquote>
+<blockquote>
+<p>&#x4E00;&#x822C;&#x4E0A;&#xFF1A;RT = CPU Time + CPU Wait</p>
+</blockquote>
+<h3 id="x4e8cqpsx548crtx7684x5173x7cfb">&#x4E8C;.QPS&#x548C;RT&#x7684;&#x5173;&#x7CFB;</h3><p><strong>&#x5728;&#x8003;&#x8651;&#x5355;&#x4E2A;&#x7EBF;&#x7A0B;&#x7684;&#x73AF;&#x5883;&#x4E0B;</strong>:</p>
+<p>$$QPS =  {1s \over RT}$$<br>&#x5373;&#xFF1A;<br>$$QPS={1s \over (CPU Time + CPU Wait)}$$</p>
+<blockquote>
+<p>&#x8FD9;&#x4E2A;&#x662F;&#x4EC0;&#x4E48;&#x610F;&#x601D;&#x5462;&#x3002;&#x5728;&#x5355;&#x4E2A;&#x7EBF;&#x7A0B;&#x7684;&#x73AF;&#x5883;&#x4E0B;&#x3002;QPS&#x76F8;&#x5F53;&#x4E8E;1s&#x5185;&#x5904;&#x7406;&#x8BF7;&#x6C42;&#x7684;&#x6570;&#x91CF;&#xFF0C;&#x90A3;&#x4E48;&#x5F53;&#x4E00;&#x4E2A;&#x8BF7;&#x6C42;&#x771F;&#x6B63;&#x9700;&#x8981;&#x7684;&#x65F6;&#x95F4;&#x5176;&#x5B9E;&#x4E3A;CPU&#x7684;&#x8BA1;&#x7B97;&#x65F6;&#x95F4;+CPU&#x7684;&#x7B49;&#x5F85;&#x65F6;&#x95F4;&#xFF08;IO&#x963B;&#x585E;&#xFF09;&#x3002;</p>
+</blockquote>
+<p><strong>&#x90A3;&#x4E48;&#x5728;&#x8003;&#x8651;&#x591A;&#x7EBF;&#x7A0B;&#x7684;&#x73AF;&#x5883;&#x4E0B;</strong>:</p>
+<p>&#x6700;&#x7B80;&#x5355;&#x7684;QPS&#x8BA1;&#x7B97;&#x5C31;&#x662F;&#x591A;&#x7EBF;&#x7A0B;&#x573A;&#x666F;:<br>$$QPS = {threadNum \times SimpleThread QPS }$$</p>
+<blockquote>
+<p>&#x5C31;&#x662F;&#x5355;&#x7EBF;&#x7A0B;&#x4E0B;&#x7684;QPS&#x4E58;&#x4EE5;&#x7EBF;&#x7A0B;&#x6570;&#x5C31;&#x597D;&#x4E86;&#x3002;(&#x867D;&#x7136;&#x4E8B;&#x5B9E;&#x5E76;&#x4E0D;&#x662F;&#x8FD9;&#x6837;&#xFF0C;&#x56E0;&#x4E3A;&#x6709;&#x7EBF;&#x7A0B;&#x4E0A;&#x4E0B;&#x6587;&#x5207;&#x6362;&#x4EE5;&#x53CA;&#x4E00;&#x7CFB;&#x5217;&#x7684;&#x95EE;&#x9898;)</p>
+</blockquote>
+<h3 id="x4e09x6700x4f73x7ebfx7a0bx6570">&#x4E09;.&#x6700;&#x4F73;&#x7EBF;&#x7A0B;&#x6570;</h3><p>CPU&#x7B49;&#x5F85;&#x7684;&#x8FD9;&#x6BB5;&#x65F6;&#x95F4;&#x4E0D;&#x53EF;&#x80FD;&#x88AB;&#x6D6A;&#x8D39;&#x6389;&#xFF0C;&#x6240;&#x4EE5;&#x5982;&#x679C;&#x80FD;&#x505A;&#x5230;&#x628A;&#x8FD9;&#x90E8;&#x5206;&#x65F6;&#x95F4;&#x8F6C;&#x5316;&#x4E3A;CPU Time&#xFF0C;&#x90A3;&#x4E48;&#x9700;&#x8981;&#x7684;&#x7EBF;&#x7A0B;&#x6570;&#x5C31;&#x53EF;&#x4EE5;&#x901A;&#x8FC7;&#x8BA1;&#x7B97;&#x5F97;&#x51FA;&#xFF1A;<br>$$threadNum = {(CPU Wait + CPU Time)  \over  CPU Time}$$<br>&#x5373;&#xFF1A;&#x5355;&#x6838;CPU&#x8BA1;&#x7B97;&#x80FD;&#x529B;&#x6240;&#x652F;&#x6301;&#x7684;&#x6700;&#x4F73;&#x7EBF;&#x7A0B;&#x6570;&#x7B49;&#x4E8E;<strong>&#x4E00;&#x6B21;&#x8BF7;&#x6C42;&#x4E0B;CPU&#x7684;&#x5168;&#x5468;&#x671F;&#x4E0E;&#x4E00;&#x6B21;&#x8BF7;&#x6C42;&#x4E0B;CPU&#x7684;&#x8BA1;&#x7B97;&#x65F6;&#x95F4;&#x7684;&#x6BD4;&#x503C;</strong></p>
+<blockquote>
+<p>&#x516C;&#x5F0F;&#x4E2D;&#x7684;&#x7EBF;&#x7A0B;&#x6570;&#x88AB;&#x7528;&#x6765;&#x5F25;&#x8865;CPUWait&#x65F6;&#x95F4;&#xFF0C;&#x4F7F;CPU&#x8BA1;&#x7B97;&#x65F6;&#x95F4;&#x6700;&#x5927;&#x5316;&#x3002;</p>
+</blockquote>
+<p>&#x7136;&#x800C;&#x5728;&#x73B0;&#x5B9E;&#x573A;&#x666F;&#x4E0B;&#x8FD8;&#x9700;&#x8981;&#x8003;&#x8651;&#x5230;CPU Core&#x7684;&#x6570;&#x91CF;&#x4EE5;&#x53CA;CPU&#x5229;&#x7528;&#x7387;&#x7684;&#x60C5;&#x51B5;&#xFF0C;CPU Core&#x4E0D;&#x7528;&#x8BB2;&#xFF0C;CPU&#x5229;&#x7528;&#x7387;&#x6307;&#x7684;&#x662F;&#x4E1A;&#x52A1;&#x7CFB;&#x7EDF;&#x573A;&#x666F;&#x4E0B;&#x5BF9;CPU&#x7684;&#x5229;&#x7528;&#x7387;&#x3002;</p>
+<p>&#x56E0;&#x4E3A;&#x5728;&#x591A;&#x7EBF;&#x7A0B;&#x73AF;&#x5883;&#x4E0B;&#xFF0C;&#x56E0;&#x4E3A;&#x7EBF;&#x7A0B;&#x4E4B;&#x95F4;&#x7ADE;&#x4E89;&#x8BA1;&#x7B97;&#x8D44;&#x6E90;&#x5BFC;&#x81F4;&#x4E1A;&#x52A1;&#x7CFB;&#x7EDF;&#x5BF9;CPU&#x8D44;&#x6E90;&#x7684;&#x5229;&#x7528;&#x7387;&#x4E0B;&#x964D;&#x3002;&#x6BD4;&#x5982;GC&#x8FC7;&#x7A0B;&#x3001;&#x9501;&#x7ADE;&#x4E89;&#x7B49;&#x3002;</p>
+<p>&#x6240;&#x4EE5;&#x4EE5;&#x6B64;&#x4E3A;&#x57FA;&#x7840;&#x518D;&#x52A0;&#x4E0A;CPU Core&#x7684;&#x6570;&#x91CF;&#x4EE5;&#x53CA;CPU&#x7684;&#x5229;&#x7528;&#x7387;&#xFF0C;&#x53EF;&#x4EE5;&#x5F97;&#x51FA;&#x6700;&#x7EC8;&#x516C;&#x5F0F;&#xFF1A;<br>$$threadNum = \frac{(CPU Wait + CPU Time) }{CPU Time} \times {CPU CoreNum \times CPU Ratio}$$<br>&#x6700;&#x7EC8;&#x6211;&#x4EEC;&#x53EF;&#x4EE5;&#x5F97;&#x51FA;&#x591A;&#x7EBF;&#x7A0B;&#x4E0B;&#x7684;&#x6700;&#x4F73;QPS&#xFF1A;</p>
+<span>$$\begin{aligned}
+mutiThreadQPS &amp; = {threadNum \times simpleQPS} \\ 
+ &amp; =  \frac{(CPU Wait + CPU Time) }{CPU Time} \times {CPU CoreNum \times CPU Ratio} \times  \frac{1s}{(CPU Time + CPU Wait ))} \\
+ &amp; = \frac{1s}{CPU Time} \times {CPU CoreNum \times CPU Ratio}
+ \end{aligned}$$</span><!-- Has MathJax -->
+<p>&#x5373;&#xFF1A;<br>$$mutiThreadQPS = {1s \over CPU Time} \times {CPU CoreNum \times CPU Ratio}$$</p>
+<h3 id="x56dbx8ba1x7b97x80fdx529bx4e0ex963fx59c6x8fbex5c14x5b9ax5f8b">&#x56DB;.&#x8BA1;&#x7B97;&#x80FD;&#x529B;&#x4E0E;&#x963F;&#x59C6;&#x8FBE;&#x5C14;&#x5B9A;&#x5F8B;</h3><p>&#x6700;&#x4F73;&#x7EBF;&#x7A0B;&#x6C60;&#x60C5;&#x51B5;&#x4E0B;&#x7684;QPS&#x4F9D;&#x8D56;&#x4E8E;CPU Time&#x3001;CPU CoreNum&#x3001;&#x4EE5;&#x53CA;CPU Ratio&#x3002;</p>
+<p>&#x6839;&#x636E;&#x516C;&#x5F0F;&#x53EF;&#x4EE5;&#x5F88;&#x8F7B;&#x677E;&#x770B;&#x51FA;&#x6765;<strong>&#x51CF;&#x5C11;CPU &#x8BA1;&#x7B97;&#x65F6;&#x95F4;</strong>&#x3001;<strong>&#x589E;&#x52A0;CPU&#x6838;</strong>&#x6216;&#x8005;<strong>&#x63D0;&#x9AD8;CPU&#x5229;&#x7528;&#x7387;</strong>&#x90FD;&#x53EF;&#x4EE5;&#x63D0;&#x9AD8;&#x4E1A;&#x52A1;&#x7684;QPS&#x6548;&#x7387;&#xFF08;&#x611F;&#x89C9;&#x5F88;&#x5E9F;&#x8BDD;&#x2026;&#xFF09;&#x3002;</p>
+<p><strong>&#x90A3;&#x4E48;&#x95EE;&#x9898;&#x6765;&#x4E86;</strong>&#x3002;</p>
+<p>&#x662F;&#x4E0D;&#x662F;CPU&#x6838;&#x4E0E;&#x7CFB;&#x7EDF;QPS&#x6210;&#x7EBF;&#x6027;&#x6BD4;&#x4F8B;&#x5462;&#xFF1F;</p>
+<p><strong>&#x963F;&#x59C6;&#x8FBE;&#x5C14;&#x5B9A;&#x5F8B;</strong>&#x7ED9;&#x4E86;&#x5F88;&#x73B0;&#x5B9E;&#x7684;&#x7ED3;&#x8BBA;&#xFF1A;<br>$$Speedup \leq \frac{1}{F + \frac{1 - F}{N}}$$<br>&#x8FD9;&#x91CC;&#x7684;<strong>F&#x53EF;&#x4EE5;&#x8868;&#x793A;&#x4EE3;&#x7801;&#x7684;&#x4E32;&#x884C;&#x7387;</strong>&#xFF0C;<strong>N&#x8868;&#x793A;&#x6838;&#x7684;&#x6570;&#x91CF;&#x3002;</strong></p>
+<blockquote>
+<p>&#x53EF;&#x5E76;&#x884C;&#x7684;&#x4EE3;&#x7801;&#x6BD4;&#x4F8B;&#x5F88;&#x5927;&#x7A0B;&#x5EA6;&#x4E0A;&#x51B3;&#x5B9A;&#x4E86;&#x4F60;&#x7684;&#x7CFB;&#x7EDF;&#x8BA1;&#x7B97;&#x80FD;&#x529B;&#x3002;&#x6216;&#x8005;&#x6362;&#x53E5;&#x8BDD;&#x8BF4;&#xFF0C;&#x4E32;&#x884C;&#x7684;&#x4EE3;&#x7801;&#x8D8A;&#x5C11;&#xFF0C;&#x5728;&#x76F8;&#x540C;&#x8BA1;&#x7B97;&#x80FD;&#x529B;&#x4E0B;&#x7684;&#x7CFB;&#x7EDF;QPS&#x5E26;&#x6765;&#x7684;&#x6536;&#x76CA;&#x5C31;&#x8D8A;&#x5927;&#xFF08;&#x5176;&#x5B9E;&#x60F3;&#x60F3;&#x5F88;&#x5BB9;&#x6613;&#x7406;&#x89E3;&#xFF09;&#x3002;</p>
+</blockquote>
+<p>&#x8FD9;&#x91CC;&#x8D34;&#x4E24;&#x4E2A;&#x5F15;&#x7528;&#x7684;&#x4F8B;&#x5B50;&#x6765;&#x8868;&#x8FF0;&#x963F;&#x59C6;&#x8FBE;&#x5C14;&#x5B9A;&#x5F8B;&#xFF1A;</p>
+<h5 id="1x5750x8f66x95eex9898xff1a">1.&#x5750;&#x8F66;&#x95EE;&#x9898;&#xFF1A;</h5><p>&#x5047;&#x8BBE;&#x4F60;&#x60F3;&#x4ECE;&#x671B;&#x4EAC;&#x53BB;&#x987A;&#x4E49;&#xFF0C;&#x90A3;&#x4E48;&#x4F60;&#x53EA;&#x80FD;&#x5750;&#x7740;&#x4E00;&#x8F86;&#x8F66;&#x8FC7;&#x53BB;&#xFF0C;&#x867D;&#x7136;&#x73B0;&#x5728;&#x6709;&#x5341;&#x8F86;&#x8F66;&#xFF0C;&#x4F60;&#x4E5F;&#x4E0D;&#x80FD;&#x63D0;&#x5347;&#x5341;&#x500D;&#x7684;&#x6548;&#x7387;&#xFF0C;&#x8FD9;&#x91CC;F&#x5C31;&#x662F;1&#xFF0C;&#x56E0;&#x4E3A;&#x6240;&#x6709;&#x7684;&#x52A8;&#x4F5C;&#x90FD;&#x9700;&#x8981;&#x4E32;&#x884C;&#xFF0C;speedup&#x5C31;&#x7B49;&#x4E8E;1&#xFF0C;&#x6548;&#x7387;&#x6CA1;&#x63D0;&#x5347;&#xFF0C;&#x867D;&#x7136;&#x4F60;&#x6709;&#x4E5D;&#x8F86;&#x8F66;&#x3002;</p>
+<h5 id="2x5199x4ee3x7801x95eex9898xff1a">2.&#x5199;&#x4EE3;&#x7801;&#x95EE;&#x9898;&#xFF1A;</h5><p>&#x5047;&#x8BBE;&#x4F60;&#x73B0;&#x5728;&#x5F00;&#x53D1;&#x4E00;&#x4E2A;&#x7CFB;&#x7EDF;&#xFF0C;&#x4F60;&#x53EF;&#x4EE5;&#x628A;&#x6240;&#x6709;&#x7684;&#x4EFB;&#x52A1;&#x5747;&#x5206;&#x4E0B;&#x53BB;&#xFF0C;&#x5047;&#x8BBE;10&#x4E2A;&#x4EBA;&#x5E2E;&#x4F60;&#x5F00;&#x53D1;&#xFF0C;&#x90A3;&#x4E48;F&#x5C31;&#x4E3A;0&#xFF0C;N&#x4E3A;10&#xFF0C;&#x90A3;&#x4E48;speedup&#x7B49;&#x4E8E;10&#xFF0C;&#x4E5F;&#x5C31;&#x662F;&#x8BF4;&#x4F60;&#x63D0;&#x5347;&#x4E86;10&#x500D;&#x7684;&#x901F;&#x7387;&#x3002;</p>
+<hr>
+<p>&#x5728;&#x6211;&#x4EEC;&#x7684;&#x5E94;&#x7528;&#x573A;&#x666F;&#x4E0B;:<br>$$mutiThreadQPS = {1s \over CPU Time} \times {CPU CoreNum \times CPU Ratio}$$<br>&#x5982;&#x679C;&#x5F53;&#x4F60;&#x901A;&#x8FC7;&#x6DFB;&#x52A0;CPU Core&#x6765;&#x63D0;&#x9AD8;&#x8BA1;&#x7B97;&#x80FD;&#x529B;&#x7684;&#x540C;&#x65F6;&#xFF08;N&#xFF09;&#xFF0C;QPS&#x4F1A;&#x63D0;&#x5347;&#x3002;</p>
+<p>&#x4F46;&#x540C;&#x65F6;&#x5904;&#x7406;&#x7684;&#x8BF7;&#x6C42;&#x6240;&#x5E26;&#x6765;&#x7684;&#x8D44;&#x6E90;&#x7ADE;&#x4E89;&#x5360;&#x6BD4;&#xFF08;&#x6BD4;&#x5982;&#x4E0A;&#x4E0B;&#x6587;&#x5207;&#x6362;&#x3001;&#x9501;&#x7ADE;&#x4E89;&#x7B49;&#xFF09;&#x4E5F;&#x4F1A;&#x8D8A;&#x6765;&#x8D8A;&#x5927;(F)&#x3002;(<strong>CPUcore&#x4E0E;QPS&#x975E;&#x7EBF;&#x6027;&#x6BD4;&#x4F8B;</strong>)</p>
+<hr>
+<h3 id="5x7ed3x8bba">5.&#x7ED3;&#x8BBA;</h3><p>&#x5982;&#x679C;&#x4F60;&#x5C1D;&#x8BD5;&#x7684;&#x901A;&#x8FC7;&#x589E;&#x52A0;&#x7EBF;&#x7A0B;&#x6570;&#x6765;&#x63D0;&#x9AD8;&#x8BA1;&#x7B97;&#x80FD;&#x529B;&#xFF08;&#x524D;&#x63D0;&#x662F;CPU&#x5229;&#x7528;&#x7387;&#x4E0D;&#x6EE1;&#xFF09;&#xFF0C;&#x90A3;&#x4E48;&#x5F53;&#x7EBF;&#x7A0B;&#x6570;&#x8FBE;&#x5230;&#x4E00;&#x4E2A;&#x5CF0;&#x503C;&#x4E4B;&#x540E;&#xFF0C;&#x56E0;&#x4E3A;&#x7EBF;&#x7A0B;&#x5207;&#x6362;&#x4EE5;&#x53CA;&#x8D44;&#x6E90;&#x7ADE;&#x4E89;&#x751A;&#x81F3;GC Time&#x5E26;&#x6765;&#x7684;&#x526F;&#x4F5C;&#x7528;&#x4F1A;&#x8D8A;&#x6765;&#x8D8A;&#x5927;&#x800C;&#x5BFC;&#x81F4;&#x6574;&#x4E2A;&#x4E1A;&#x52A1;&#x7684;RT&#x4E0B;&#x964D;&#xFF0C;&#x6700;&#x7EC8;QPS&#x4E5F;&#x4F1A;&#x4E0B;&#x964D;&#x3002;</p>
+<p>&#x6240;&#x4EE5;&#x6211;&#x4EEC;&#x5E0C;&#x671B;&#x7684;&#x662F;&#x5728;&#x6838;&#x6570;&#x4E00;&#x5B9A;&#x7684;&#x60C5;&#x51B5;&#x4E0B;&#x627E;&#x5230;&#x67D0;&#x4E2A;&#x70B9;&#xFF0C;&#x4F7F;&#x7CFB;&#x7EDF;&#x7684;QPS&#x6700;&#x5927;&#xFF0C;RT&#x76F8;&#x5BF9;&#x8F83;&#x5C0F;&#x3002;</p>
+<p>&#x6240;&#x4EE5;&#x6211;&#x4EEC;&#x9700;&#x8981;&#x4E0D;&#x65AD;&#x7684;&#x538B;&#x6D4B;&#xFF0C;&#x8C03;&#x6574;&#x7EBF;&#x7A0B;&#x6C60;&#xFF0C;&#x627E;&#x5230;&#x8FD9;&#x4E2A;QPS&#x7684;&#x5CF0;&#x503C;&#xFF0C;&#x5E76;&#x4E14;&#x4F7F;CPU&#x7684;&#x5229;&#x7528;&#x7387;&#x8FBE;&#x5230;100%,&#x8FD9;&#x6837;&#x624D;&#x662F;&#x7CFB;&#x7EDF;&#x7684;&#x6700;&#x5927;QPS&#x548C;&#x6700;&#x4F73;&#x7EBF;&#x7A0B;&#x6570;&#x3002;</p>
+<ol>
+<li>&#x6700;&#x7EC8;&#x8FD8;&#x662F;&#x9700;&#x8981;&#x4E0D;&#x65AD;&#x7684;&#x538B;&#x6D4B;&#x6765;&#x8C03;&#x6574;&#x51FA;&#x6B63;&#x786E;&#x7684;&#x7EBF;&#x7A0B;&#x6570;&#x91CF;.&#x3002;</li>
+<li>&#x63D0;&#x9AD8;CPU&#x5229;&#x7528;&#x7387;&#xFF0C;&#x5C3D;&#x53EF;&#x80FD;&#x7684;&#x51CF;&#x5C11;&#x8D44;&#x6E90;&#x7ADE;&#x4E89;&#xFF0C;IO&#x963B;&#x585E;&#xFF0C;&#x63D0;&#x9AD8;&#x4EE3;&#x7801;&#x5E76;&#x884C;&#x7387;&#x3002;</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>ChrisZhang
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="https://chouney.github.io/2018/04/11/QPS/" title="QPS与最佳线程数设计的学习">https://chouney.github.io/2018/04/11/QPS/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/基础积累/" rel="tag"># 基础积累</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2017/10/11/关于SpringMVC的工作流程问题/" rel="prev" title="关于SpringMVC的工作流程问题">
+      <i class="fa fa-chevron-left"></i> 关于SpringMVC的工作流程问题
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/09/18/Stream Piplines结构及原理/" rel="next" title="Stream Piplines结构及原理">
+      Stream Piplines结构及原理 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+    
+  <div class="comments">
+    <div id="lv-container" data-id="city" data-uid="MTAyMC80NDYxMS8yMTE0MA=="></div>
+  </div>
+  
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#qpsx4e0ex6700x4f73x7ebfx7a0bx6570x8bbex8ba1x7684x5b66x4e60"><span class="nav-text">QPS与最佳线程数设计的学习</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#x4e00qpsx548crt"><span class="nav-text">一.QPS和RT</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#x4e8cqpsx548crtx7684x5173x7cfb"><span class="nav-text">二.QPS和RT的关系</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#x4e09x6700x4f73x7ebfx7a0bx6570"><span class="nav-text">三.最佳线程数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#x56dbx8ba1x7b97x80fdx529bx4e0ex963fx59c6x8fbex5c14x5b9ax5f8b"><span class="nav-text">四.计算能力与阿姆达尔定律</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#1x5750x8f66x95eex9898xff1a"><span class="nav-text">1.坐车问题：</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#2x5199x4ee3x7801x95eex9898xff1a"><span class="nav-text">2.写代码问题：</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5x7ed3x8bba"><span class="nav-text">5.结论</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">ChrisZhang</p>
+  <div class="site-description" itemprop="description">张琪祥的博客</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">16</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">8</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">ChrisZhang</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script>
+<script src="/js/schemes/muse.js"></script>
+<script src="/js/next-boot.js"></script><script src="/js/bookmark.js"></script>
+
+
+
+  
+  <script>
+    (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      bp.src = (curProtocol === 'https') ? 'https://zz.bdstatic.com/linksubmit/push.js' : 'http://push.zhanzhang.baidu.com/push.js';
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+    })();
+  </script>
+
+
+
+
+  <script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+      
+
+<script>
+  if (typeof MathJax === 'undefined') {
+    window.MathJax = {
+      loader: {
+          load: ['[tex]/mhchem'],
+        source: {
+          '[tex]/amsCd': '[tex]/amscd',
+          '[tex]/AMScd': '[tex]/amscd'
+        }
+      },
+      tex: {
+        inlineMath: {'[+]': [['$', '$']]},
+          packages: {'[+]': ['mhchem']},
+        tags: 'ams'
+      },
+      options: {
+        renderActions: {
+          findScript: [10, doc => {
+            document.querySelectorAll('script[type^="math/tex"]').forEach(node => {
+              const display = !!node.type.match(/; *mode=display/);
+              const math = new doc.options.MathItem(node.textContent, doc.inputJax[0], display);
+              const text = document.createTextNode('');
+              node.parentNode.replaceChild(text, node);
+              math.start = {node: text, delim: '', n: 0};
+              math.end = {node: text, delim: '', n: 0};
+              doc.math.push(math);
+            });
+          }, '', false],
+          insertedScript: [200, () => {
+            document.querySelectorAll('mjx-container').forEach(node => {
+              let target = node.parentNode;
+              if (target.nodeName.toLowerCase() === 'li') {
+                target.parentNode.classList.add('has-jax');
+              }
+            });
+          }, '', false]
+        }
+      }
+    };
+    (function () {
+      var script = document.createElement('script');
+      script.src = '//cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js';
+      script.defer = true;
+      document.head.appendChild(script);
+    })();
+  } else {
+    MathJax.startup.document.state(0);
+    MathJax.texReset();
+    MathJax.typeset();
+  }
+</script>
+
+    
+
+  
+
+<script>
+NexT.utils.loadComments(document.querySelector('#lv-container'), () => {
+  window.livereOptions = {
+    refer: location.pathname.replace(CONFIG.root, '').replace('index.html', '')
+  };
+  (function(d, s) {
+    var j, e = d.getElementsByTagName(s)[0];
+    if (typeof LivereTower === 'function') { return; }
+    j = d.createElement(s);
+    j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+    j.async = true;
+    e.parentNode.insertBefore(j, e);
+  })(document, 'script');
+});
+</script>
+
+</body>
+</html>
